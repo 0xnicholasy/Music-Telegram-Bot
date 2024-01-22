@@ -1,4 +1,3 @@
-from codecs import ignore_errors
 from math import e
 import os
 import yt_dlp as youtube_dl
@@ -16,7 +15,7 @@ def download_audio(url: str):
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
-        ignore_errors: True,
+        'ignoreerrors': True,  # Ignore errors
     }
 
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
@@ -26,6 +25,7 @@ def download_audio(url: str):
 async def play(update: Update, context: CallbackContext) -> None:
     print(context.args)
     music_link: str = update.message.text
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Downloading mp3 from playlist {music_link}')
     print(music_link)
     try:
         file_path = download_audio(music_link)

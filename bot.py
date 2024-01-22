@@ -1,27 +1,14 @@
-#!/usr/bin/env python
-# pylint: disable=unused-argument
-# This program is dedicated to the public domain under the CC0 license.
-
-"""
-Simple Bot to reply to Telegram messages.
-
-First, a few handler functions are defined. Then, those functions are passed to
-the Application and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-
-Usage:
-Basic Echo bot example, repeats messages.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
-"""
-
 import logging
+import os
 
 from telegram import ForceReply, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackContext, CallbackQueryHandler
 from filter import YoutubePlaylistFilter
 
 from music import play
+import dotenv
+
+dotenv.load_dotenv()
 
 # Enable logging
 logging.basicConfig(
@@ -73,20 +60,16 @@ async def button(update: Update, context: CallbackContext) -> None:
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token("6741076979:AAGzGgd7zTxYRJTrj4gXCahGfiTTZ7UuKvY").build()
+    application = Application.builder().token(os.getenv("TOKEN")).build()
 
     application.add_handler(CommandHandler('start', help_command))
-    application.add_handler(CallbackQueryHandler(button))
+    # application.add_handler(CallbackQueryHandler(button))
 
     # on different commands - answer in Telegram
-    # application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
-    # application.add_handler(CommandHandler("play", play))
 
     # on non command i.e message - echo the message on Telegram
-    # application.add_handler(MessageHandler(filters.TEXT, play))
     application.add_handler(MessageHandler(YoutubePlaylistFilter(), play))
-    # application.add_handler(MessageHandler(filters.Text & ~filters.COMMAND , play))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES,)
