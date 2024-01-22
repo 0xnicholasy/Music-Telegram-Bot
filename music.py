@@ -32,8 +32,10 @@ async def play(update: Update, context: CallbackContext) -> None:
         print(f'file path: {file_path}')
         for (dirpath, dirnames, filenames) in os.walk(file_path):
             for filename in filenames:
-                filename = filename.replace('webm', 'mp3')
+                filename: str = filename.replace('webm', 'mp3')
                 print(f'filename: {filename}')
+                if filename.endswith('.part'):
+                    continue    # skip files failed to download
                 full_file_path = file_path + filename
                 with open(full_file_path, 'rb') as audio_file:
                     await context.bot.send_audio(chat_id=update.effective_chat.id, audio=audio_file)
