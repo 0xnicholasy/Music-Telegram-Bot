@@ -7,7 +7,7 @@ from filter import YoutubePlaylistFilter
 
 from music import play
 import dotenv
-
+    
 dotenv.load_dotenv()
 
 # Enable logging
@@ -19,16 +19,6 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-
-# Define a few command handlers. These usually take the two arguments update and
-# context.
-# async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-#     """Send a message when the command /start is issued."""
-#     user = update.effective_user
-#     await update.message.reply_html(
-#         rf"Hi {user.mention_html()}!",
-#         reply_markup=ForceReply(selective=True),
-#     )
 
 async def start(update: Update, context: CallbackContext) -> None:
     keyboard = [
