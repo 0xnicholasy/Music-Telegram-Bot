@@ -3,3 +3,5 @@ venv
 downloads/**
 .env
 !downloads/.gitkeep
+logs/**
+!logs/.gitkeep
