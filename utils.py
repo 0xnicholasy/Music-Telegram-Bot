@@ -33,21 +33,64 @@ def get_current_day_str():
 import re
 
 
-def escape_markdown_v2(text: str):
-    # List of special characters that need to be escaped in MarkdownV2
-    # Note: This is not a complete list and may need to be updated based on your needs
-    special_chars = r"/(_*[\~`>#\+=|\{}.!-])/gi"
-
-    # Use a regex to find special characters that are not part of a MarkdownV2 pattern
-    # This is a simplified example and may not cover all cases
-    pattern = rf"([{special_chars}])"
-
-    # Add a backslash before each matched special character
-    escaped_text = re.sub(pattern, r"\\\1", text)
-
-    return escaped_text
+def format_to_markdown_v2(text: str):
+    replacing_dict = {
+        "\`": "`",
+        "\*\*": "*",
+    }
+    for key in replacing_dict:
+        text = text.replace(key, replacing_dict[key])
+    return text
 
 
 if __name__ == "__main__":
-    s = "Certainly! Given your book's goal of teaching developers how to leverage AI as a productivity tool, an effective outline would be structured to progressively build the reader's understanding and skills. Here’s a suggested outline that balances theory, practical application, and showcases real-world examples:\n\n### Introduction\n- **The Evolution of AI in Software Development**: Brief history and current trends.\n- **Why Developers Should Embrace AI**: Benefits of using AI as a productivity tool.\n\n### Part I: Understanding AI in Development\n- **Chapter 1: Basics of AI and Machine Learning**: Definitions, differences, and relevance.\n- **Chapter 2: Overview of AI Technologies Used in Development**: Focus on tools and technologies relevant to developers.\n- **Chapter 3: The Role of AI in Modern Development Processes**: Examples of how AI is transforming development workflows.\n\n### Part II: Setting Up the Environment for AI-Driven Development\n- **Chapter 4: Tools and Platforms**: Comparison of AI tools and platforms most beneficial for developers.\n- **Chapter 5: Integrating AI into Your Development Environment**: Step-by-step guide on setting up and configuring your environment.\n\n### Part III: Practical Applications of AI in Development\n- **Chapter 6: Automating Routine Tasks**: Examples of automation in code generation, testing, and deployment.\n- **Chapter 7: AI for Code Optimization and Analysis**: How AI can help in code review, optimization, and refactoring.\n- **Chapter 8: Leveraging AI for Better Code Security**: Use of AI in identifying vulnerabilities and ensuring code security.\n- **Chapter 9: AI in Debugging and Problem-Solving**: Case studies on how AI can speed up the debugging process.\n\n### Part IV: Advanced Uses of AI in Development\n- **Chapter 10: Machine Learning for Predictive Analysis**: Implementing ML models for project management and predictive maintenance.\n- **Chapter 11: Natural Language Processing (NLP) for Enhanced Coding Efficiency**: Examples of NLP in documentation and code comments.\n- **Chapter 12: Using AI for Custom Tool Development**: Guide to developing your own AI-enhanced tools based on project needs.\n\n### Part V: Building Your AI Skills as a Developer\n- **Chapter 13: Learning Resources and Communities**: Curated list of courses, books, and communities for further learning.\n- **Chapter 14: Best Practices in AI-driven Development**: Dos and Don'ts, ethical considerations, and staying up-to-date with AI advancements.\n- **Chapter 15: The Future of AI in Development**: Insights into emerging trends and how to prepare for them.\n\n### Conclusion\n- **Summarizing the AI Journey for Developers**: Recap of key takeaways.\n- **Next Steps and Action Plan**: Encouraging readers to apply what they have learned.\n\n### Appendices\n- **Glossary of Terms**\n- **List of Tools and Resources**\n- **Frequently Asked Questions (FAQs)**\n\n### Illustrations and Supporting Material\nThroughout the book, include diagrams, flowcharts, and screenshots to illustrate concepts and tools. Code snippets and real-world examples should be used to complement theoretical explanations, making abstract ideas tangible and relatable. Including practical exercises or challenges at the end of each chapter can also encourage active learning and experimentation.\n\nThis outline is structured to first build a solid foundation of understanding about AI in the context of development, followed by practical applications and finally exploring advanced topics and future trends. Tailor the content to your audience's skill level and needs, ensuring it remains accessible, practical, and engaging."
-    print(escape_markdown_v2(s))
+    s = """ERC\-4337 is a significantly more complex and innovative standard compared to the ones previously discussed \(ERC\-20, ERC\-721, and ERC\-1155\)\. As of my last update in 2023, ERC\-4337, also known as Account Abstraction \(AA\), proposes a method to enable more flexible account models on Ethereum, aiming to blur the lines between externally owned accounts \(regular user wallets\) and contract accounts, enabling richer on\-chain behaviors directly from user accounts\.
+
+The crux of ERC\-4337 lies in enabling smart contract wallets to perform actions that traditionally required externally owned accounts \(EOAs\), like initiating transactions, without the need for those accounts to hold ETH for gas or understand complex interact with dapps \(decentralized applications\)\. It introduces User Operation objects, which are bundles of instructions signed by the user and executed by Bundlers \(entities in the network that bundle these operations and submit them to the chain\)\.
+
+It's important to note that as of the information available up to 2023, ERC\-4337 is not a token standard like ERC\-20 or ERC\-721, but rather a standard for improving account capabilities and interaction models on the Ethereum blockchain\.
+
+Implementing ERC\-4337 or creating a smart contract wallet that leverages its functionalities would entail understanding several components:
+
+1\. \*\*EntryPoint Contract\*\*: A standardized contract deployed to a fixed address on Ethereum that processes User Operations\.
+2\. \*\*User Operation Object\*\*: A structured set of instructions including the target contract call, gas specifications, and a signature from the user's account\.
+3\. \*\*Bundlers \(or Relayers\)\*\*: Participants who collect User Operations, form them into bundles, and submit them to the EntryPoint contract\.
+4\. \*\*Validators\*\*: Nodes that validate these User Operations\.
+
+Given the complexity and novelty of ERC\-4337, here's a very high\-level overview of what a component might look like, keeping in mind detailed code would be extensive and highly dependent on the specific use case:
+
+\`\`\`solidity
+// SPDX\-License\-Identifier: MIT
+pragma solidity ^0\.8\.0;
+
+// This is a very simplified representation and not a complete implementation
+interface IUserOperation \{
+    // Define structure or functions relevant to user operations here
+\}
+
+contract EntryPoint \{
+    function handleUserOperation\(IUserOperation userOp\) external \{
+        // Logic to process the user operation would go here
+        // This could involve validating the operation, executing transactions, handling gas payments, etc\.
+    \}
+\}
+
+// Example of a smart contract wallet leveraging ERC\-4337 Account Abstraction functionalities
+contract MySmartWallet \{
+    address entryPointAddress;
+
+    constructor\(address \_entryPointAddress\) \{
+        entryPointAddress \= \_entryPointAddress;
+    \}
+
+    function executeOperation\(/\* parameters defining the operation \*/\) external \{
+        // Logic to create a user operation and send it to the EntryPoint
+        // This part is crucial as it would define the interactions the wallet can perform
+    \}
+\}
+\`\`\`
+
+For a real, practical implementation, you would need to dive deeper into the specifications of ERC\-4337, potentially leveraging libraries and tools specifically designed for account abstraction\. Moreover, since the Ethereum ecosystem evolves rapidly, it’s crucial to refer to the latest documentation and discussions in the Ethereum developer community when implementing cutting\-edge standards like ERC\-4337\.
+
+Given the complexity and potential security implications, such projects should be approached with thorough testing, potentially audits, and close attention paid to the evolving standards and implementations\."""
+    print(format_to_markdown_v2(s))
