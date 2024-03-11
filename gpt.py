@@ -90,6 +90,10 @@ async def respond(update: Update, context: CallbackContext) -> None:
 
         # async for chunk in response:
         best_response = split_string(response.choices[0].message.content)
+        tokens_used = {
+            "prompt": response.usage.prompt_tokens,
+            "completion": response.usage.completion_tokens,
+        }
         print(f"Number of response choices: {len(response.choices)}")
 
         for msg in best_response:  # * send response in telegram
@@ -124,11 +128,16 @@ async def respond(update: Update, context: CallbackContext) -> None:
         gpt_users.find_one_and_update(
             user_query_filter,
             {
-                "$inc": {"asking_count.success": 1},
+                "$inc": {
+                    "asking_count.success": 1,
+                    "tokens_used.prompt": tokens_used["prompt"],
+                    "tokens_used.completion": tokens_used["completion"],
+                },
                 "$setOnInsert": {
                     "username": current_user.username,
                     "user_id": current_user.id,
                     "asking_count.failed": 0,
+                    "tokens_used": tokens_used,
                 },
             },
             upsert=True,
@@ -141,11 +150,16 @@ async def respond(update: Update, context: CallbackContext) -> None:
         gpt_users.find_one_and_update(
             user_query_filter,
             {
-                "$inc": {"asking_count.failed": 1},
+                "$inc": {
+                    "asking_count.success": 1,
+                    "tokens_used.prompt": tokens_used["prompt"],
+                    "tokens_used.completion": tokens_used["completion"],
+                },
                 "$setOnInsert": {
                     "username": current_user.username,
                     "user_id": current_user.id,
                     "asking_count.success": 0,
+                    "tokens_used": tokens_used,
                 },
             },
             upsert=True,
