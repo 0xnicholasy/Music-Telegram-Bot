@@ -40,7 +40,28 @@ def format_to_markdown_v2(text: str):
     }
     for key in replacing_dict:
         text = text.replace(key, replacing_dict[key])
-    return text
+
+    # Split the text into lines
+    lines = text.split("\n")
+
+    # Process each line
+    formatted_lines = []
+    for line in lines:
+        # Check if the line starts with "##" or "###"
+        if line.startswith("##") or line.startswith("###"):
+            # Remove the "##" or "###" and strip any leading or trailing spaces
+            new_line = line.lstrip("#").strip()
+            # Add '*' at the beginning and end of the line
+            new_line = f"*{new_line}*"
+            formatted_lines.append(new_line)
+        else:
+            # If no need to change, keep the line as it is
+            formatted_lines.append(line)
+
+    # Join the formatted lines back into a single text string
+    formatted_text = "\n".join(formatted_lines)
+
+    return formatted_text
 
 
 if __name__ == "__main__":
