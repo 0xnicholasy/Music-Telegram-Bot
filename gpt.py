@@ -32,8 +32,9 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
-
-client = OpenAI(api_key=os.getenv("GPT"))
+openai_keys = [os.getenv("GPT-FIRST"), os.getenv("GPT-SECOND")]
+client = OpenAI(api_key=openai_keys[0])
+logger.debug(f"using first priority api key: {openai_keys[0]}")
 
 
 async def start(update: Update, context: CallbackContext) -> None:
@@ -145,7 +146,7 @@ async def chat(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         logger.error(e)
         await update.message.reply_text(
-            "Unexpected error occurred, failed to send reply"
+            f"Following unexpected error occurred, failed to send reply:\n{e}"
         )
         gpt_users.find_one_and_update(
             user_query_filter,
