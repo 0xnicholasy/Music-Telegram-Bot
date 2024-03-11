@@ -1,13 +1,19 @@
 import logging
 import os
 
-from telegram import ForceReply, InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackContext, CallbackQueryHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    CallbackContext,
+)
 from filter import YoutubePlaylistFilter
 
-from music import play
+from music.music import play
 import dotenv
-    
+
 dotenv.load_dotenv()
 
 # Enable logging
@@ -22,13 +28,15 @@ logger = logging.getLogger(__name__)
 
 async def start(update: Update, context: CallbackContext) -> None:
     keyboard = [
-        [InlineKeyboardButton("Option 1", callback_data='1'),
-         InlineKeyboardButton("Option 2", callback_data='2')]
+        [
+            InlineKeyboardButton("Option 1", callback_data="1"),
+            InlineKeyboardButton("Option 2", callback_data="2"),
+        ]
     ]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text('Please choose:', reply_markup=reply_markup)
+    await update.message.reply_text("Please choose:", reply_markup=reply_markup)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -40,6 +48,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 #     """Echo the user message."""
 #     await update.message.reply_text(update.message.text)
 
+
 async def button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
 
@@ -47,12 +56,13 @@ async def button(update: Update, context: CallbackContext) -> None:
 
     await query.edit_message_text(text=f"Selected option: {query.data}")
 
+
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(os.getenv("TOKEN")).build()
 
-    application.add_handler(CommandHandler('start', help_command))
+    application.add_handler(CommandHandler("start", help_command))
     # application.add_handler(CallbackQueryHandler(button))
 
     # on different commands - answer in Telegram
@@ -62,7 +72,9 @@ def main() -> None:
     application.add_handler(MessageHandler(YoutubePlaylistFilter(), play))
 
     # Run the bot until the user presses Ctrl-C
-    application.run_polling(allowed_updates=Update.ALL_TYPES,)
+    application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+    )
 
 
 if __name__ == "__main__":

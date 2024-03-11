@@ -46,7 +46,7 @@ async def start(update: Update, context: CallbackContext) -> None:
     )
 
 
-async def respond(update: Update, context: CallbackContext) -> None:
+async def chat(update: Update, context: CallbackContext) -> None:
     try:
         message = update.message.text
         current_user = update.message.from_user
@@ -194,7 +194,7 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
 
     # on non command i.e message - echo the message on Telegram
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, respond))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
     application.add_handler(CommandHandler("clear", clear))
 
     # Run the bot until the user presses Ctrl-C
