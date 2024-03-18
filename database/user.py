@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-from typing import Dict, Literal, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Dict, Literal, Tuple, Optional
 
-from telegram import User
+Roles = Literal["user", "admin", "blacklisted"]
 
 
 @dataclass
@@ -10,8 +10,9 @@ class GPTUser:
 
     user_id: int
     username: str
-    asking_count: Dict[Literal["success", "failed"], int] = {"success": 0, "failed": 0}
-    tokens_used: Dict[Literal["prompt", "completion"], int] = {
-        "prompt": 0,
-        "completion": 0,
-    }
+    role: Roles = "user"
+    asking_count: Dict[Literal["success", "failed"], int] = field(default_factory=dict)
+    _id: Optional[Any] = None
+    tokens_used: Dict[Literal["prompt", "completion"], int] = field(
+        default_factory=dict
+    )

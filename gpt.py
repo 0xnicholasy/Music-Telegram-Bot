@@ -1,5 +1,6 @@
 import datetime
-from telegram import Update
+from typing import List
+from telegram import Update, Bot
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -7,12 +8,13 @@ from telegram.ext import (
     CallbackContext,
     filters,
 )
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 from openai.types import Completion
 import dotenv
 import logging
 import os
 from database.message_history import MessageHistory
+from database.user import GPTUser
 from logger import ClearLoggingObject, RespondLoggingObject
 
 from utils import format_to_markdown_v2, get_current_day_str, split_string
@@ -33,8 +35,72 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 openai_keys = [os.getenv("GPT-FIRST"), os.getenv("GPT-SECOND")]
+print(f"openai_keys: {openai_keys}")
 client = OpenAI(api_key=openai_keys[0])
 logger.debug(f"using first priority api key: {openai_keys[0]}")
+
+# Replace 'YOUR_TOKEN' with your bot's access token
+bot_token = "YOUR_TOKEN"
+bot = Bot(token=os.getenv("GPT_BOT_TOKEN"))
+
+gpt_model = "gpt-3.5-turbo"
+# gpt_model = "gpt-4-turbo-preview"
+
+
+def get_admins():
+    gpt_users = db["users"]
+    user_query_filter = {"role": "admin"}
+    admin_cursor = gpt_users.find(user_query_filter)
+
+    # Process the cursor and fetch results
+    admins: List[GPTUser] = []
+    for admin in admin_cursor:
+        admins.append(GPTUser(**admin))
+
+    return admins
+
+
+def is_admin(user_id: int):
+    # * get user object from db
+    gpt_users = db["users"]
+    user_query_filter = {"user_id": user_id}
+    user_collection = gpt_users.find_one(user_query_filter)
+    if user_collection:
+        user = GPTUser(**user_collection)
+        return user.role == "admin"
+    return False
+
+
+async def notify_admin(admin_user_id: int, message: str):
+    await bot.send_message(chat_id=admin_user_id, text=message)
+
+
+def get_admins():
+    gpt_users = db["users"]
+    user_query_filter = {"role": "admin"}
+    admin_cursor = gpt_users.find(user_query_filter)
+
+    # Process the cursor and fetch results
+    admins: List[GPTUser] = []
+    for admin in admin_cursor:
+        admins.append(GPTUser(**admin))
+
+    return admins
+
+
+def is_admin(user_id: int):
+    # * get user object from db
+    gpt_users = db["users"]
+    user_query_filter = {"user_id": user_id}
+    user_collection = gpt_users.find_one(user_query_filter)
+    if user_collection:
+        user = GPTUser(**user_collection)
+        return user.role == "admin"
+    return False
+
+
+async def notify_admin(admin_user_id: int, message: str):
+    await bot.send_message(chat_id=admin_user_id, text=message)
 
 
 async def start(update: Update, context: CallbackContext) -> None:
@@ -53,10 +119,21 @@ async def chat(update: Update, context: CallbackContext) -> None:
         current_user = update.message.from_user
         chat_id = update.message.chat_id
         message_thread_id = update.message.message_thread_id
+        admins = get_admins()
 
         # * get user object from db
         gpt_users = db["users"]
         user_query_filter = {"user_id": current_user.id}
+        user_collection = gpt_users.find_one(user_query_filter)
+        print(datetime.datetime.now().ctime())
+        if user_collection:
+            user = GPTUser(**user_collection)
+            if user.role == "blacklisted":
+                print(f"user: {user} is blacklisted")
+                await update.message.reply_text(
+                    "You have been backlisted from the bot", quote=True
+                )
+                return
 
         print(f"Message sent from chat: {update.message.chat}\nPrompt: {message}")
         print(f"Message thread_id: {message_thread_id}")
@@ -71,7 +148,7 @@ async def chat(update: Update, context: CallbackContext) -> None:
         message_history: MessageHistory = MessageHistory(
             chat_id,
             message_thread_id,
-            "gpt-4-turbo-preview",
+            gpt_model,
             [
                 {
                     "role": "system",
@@ -86,7 +163,7 @@ async def chat(update: Update, context: CallbackContext) -> None:
 
         message_history.messages.append({"role": "user", "content": message})
         response: Completion = client.chat.completions.create(
-            model="gpt-4-turbo-preview", messages=message_history.messages
+            model=gpt_model, messages=message_history.messages
         )
 
         # async for chunk in response:
@@ -112,6 +189,12 @@ async def chat(update: Update, context: CallbackContext) -> None:
             history_dict.pop("_id")
             message_histories.insert_one(history_dict)
             print("Added new history to db")
+
+            for admin in admins:
+                await notify_admin(
+                    admin.user_id,
+                    f"New user with following details\n{current_user.to_json()}",
+                )
         else:
             # * update messages to db
             message_histories.update_one(
@@ -138,15 +221,22 @@ async def chat(update: Update, context: CallbackContext) -> None:
                     "username": current_user.username,
                     "user_id": current_user.id,
                     "asking_count.failed": 0,
-                    "tokens_used": tokens_used,
+                    "role": "user",
                 },
             },
             upsert=True,
         )
+    except (
+        RateLimitError
+    ) as rle:  # switch to second api endpoint if the first one exceed limit
+        globals()["client"] = OpenAI(api_key=openai_keys[1])
+        logger.debug(f"using first priority api key: {openai_keys[1]}")
+        await chat(update, context)
     except Exception as e:
         logger.error(e)
+        print(type(e))
         await update.message.reply_text(
-            f"Following unexpected error occurred, failed to send reply:\n{e}"
+            f"Following unexpected error occurred, failed to send reply:\n{e}\nPlease try again"
         )
         gpt_users.find_one_and_update(
             user_query_filter,
@@ -160,7 +250,6 @@ async def chat(update: Update, context: CallbackContext) -> None:
                     "username": current_user.username,
                     "user_id": current_user.id,
                     "asking_count.success": 0,
-                    "tokens_used": tokens_used,
                 },
             },
             upsert=True,
@@ -187,6 +276,28 @@ async def clear(update: Update, context: CallbackContext):
     logger.info(clear_logging_obj)
 
 
+async def blacklist(update: Update, context: CallbackContext):
+    args = update.message.text.split(" ")
+
+    if len(args) == 1:
+        await update.message.reply_text("User id must not be emptied")
+        return
+    user_id = int(args[1])
+
+    if not is_admin(update.message.from_user.id):
+        await update.message.reply_text("You are not authorized to call this command!")
+        return
+    print(f"blacklisting user id: {user_id}")
+    gpt_users = db["users"]
+    receipt = gpt_users.update_one(
+        {"user_id": user_id}, {"$set": {"role": "blacklisted"}}
+    )
+    if receipt.modified_count:
+        await update.message.reply_text(f"Blacklisted user {user_id}!")
+    else:
+        await update.message.reply_text(f"User {user_id} not found from db!")
+
+
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
@@ -197,6 +308,7 @@ def main() -> None:
     # on non command i.e message - echo the message on Telegram
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
     application.add_handler(CommandHandler("clear", clear))
+    application.add_handler(CommandHandler("blacklist", blacklist))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(
