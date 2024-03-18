@@ -36,8 +36,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 openai_keys = [os.getenv("GPT-FIRST"), os.getenv("GPT-SECOND")]
 print(f"openai_keys: {openai_keys}")
-client = OpenAI(api_key=openai_keys[0])
-logger.debug(f"using first priority api key: {openai_keys[0]}")
+gpt_key = openai_keys[1]
+client = OpenAI(api_key=gpt_key)
+print(f"using first priority api key: {gpt_key}")
 
 # Replace 'YOUR_TOKEN' with your bot's access token
 bot_token = "YOUR_TOKEN"
@@ -130,9 +131,9 @@ async def chat(update: Update, context: CallbackContext) -> None:
             user = GPTUser(**user_collection)
             if user.role == "blacklisted":
                 print(f"user: {user} is blacklisted")
-                await update.message.reply_text(
-                    "You have been backlisted from the bot", quote=True
-                )
+                # await update.message.reply_text(
+                #     "You have been backlisted from the bot", quote=True
+                # )
                 return
 
         print(f"Message sent from chat: {update.message.chat}\nPrompt: {message}")
