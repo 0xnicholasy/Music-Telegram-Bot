@@ -1,5 +1,7 @@
 __pycache__
 venv
+.venv
+uv.lock
 downloads/**
 .env
 !downloads/.gitkeep
