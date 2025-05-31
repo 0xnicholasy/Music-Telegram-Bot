@@ -1,11 +1,35 @@
 import os
 import time
+import subprocess
 from typing import Tuple
 from pytubefix import YouTube, Playlist
 from telegram import Update
 from telegram.ext import CallbackContext, ContextTypes
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+def convert_to_mp3(input_file: str, output_file: str) -> bool:
+    """
+    Convert audio file to MP3 format using ffmpeg.
+    Returns True if conversion successful, False otherwise.
+    """
+    try:
+        # Use ffmpeg to convert to mp3 with good quality
+        subprocess.run([
+            'ffmpeg', '-i', input_file, 
+            '-codec:a', 'libmp3lame',
+            '-b:a', '192k',  # 192 kbps bitrate for good quality
+            '-y',  # Overwrite output file if it exists
+            output_file
+        ], check=True, capture_output=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error converting {input_file} to MP3: {e}")
+        return False
+    except FileNotFoundError:
+        print("Error: ffmpeg not found. Please install ffmpeg to enable audio conversion.")
+        return False
 
 
 def download_audio(url: str, is_playlist: bool) -> Tuple[str, str]:
@@ -74,6 +98,25 @@ async def send_all_audio(
                     continue
                     
                 full_file_path = os.path.join(file_path, filename)
+                
+                # Convert non-MP3 files to MP3
+                if not filename.lower().endswith('.mp3'):
+                    # Create MP3 filename
+                    name_without_ext = os.path.splitext(filename)[0]
+                    mp3_filename = f"{name_without_ext}.mp3"
+                    mp3_file_path = os.path.join(file_path, mp3_filename)
+                    
+                    print(f"Converting {filename} to MP3...")
+                    if convert_to_mp3(full_file_path, mp3_file_path):
+                        # Remove original file after successful conversion
+                        os.remove(full_file_path)
+                        # Update variables to use the converted file
+                        full_file_path = mp3_file_path
+                        filename = mp3_filename
+                        print(f"Successfully converted to {mp3_filename}")
+                    else:
+                        print(f"Failed to convert {filename}, sending original file")
+                
                 try:
                     print("sending audio: ", filename)
                     with open(full_file_path, "rb") as audio_file:
