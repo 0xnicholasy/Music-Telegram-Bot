@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -24,6 +25,49 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
+
+
+def cleanup_downloads() -> None:
+    """Clean up downloads directory on bot startup."""
+    downloads_dir = "downloads"
+    
+    try:
+        if os.path.exists(downloads_dir):
+            # Get all items in downloads directory
+            for item in os.listdir(downloads_dir):
+                item_path = os.path.join(downloads_dir, item)
+                
+                # Keep .gitkeep files and NA directory
+                if item.startswith("."):
+                    continue
+                elif item == "NA":
+                    # Clean out files inside NA directory but keep the directory
+                    if os.path.isdir(item_path):
+                        for na_item in os.listdir(item_path):
+                            na_item_path = os.path.join(item_path, na_item)
+                            if na_item != ".gitkeep":  # Keep .gitkeep in NA directory too
+                                if os.path.isfile(na_item_path):
+                                    os.remove(na_item_path)
+                                    logger.info(f"Removed file: {na_item_path}")
+                                elif os.path.isdir(na_item_path):
+                                    shutil.rmtree(na_item_path)
+                                    logger.info(f"Removed directory: {na_item_path}")
+                else:
+                    # Remove all other files and directories
+                    if os.path.isfile(item_path):
+                        os.remove(item_path)
+                        logger.info(f"Removed file: {item_path}")
+                    elif os.path.isdir(item_path):
+                        shutil.rmtree(item_path)
+                        logger.info(f"Removed directory: {item_path}")
+        
+        # Ensure NA directory exists
+        na_dir = os.path.join(downloads_dir, "NA")
+        os.makedirs(na_dir, exist_ok=True)
+        logger.info("Downloads directory cleanup completed")
+        
+    except Exception as e:
+        logger.error(f"Error during downloads cleanup: {e}")
 
 
 async def start(update: Update, context: CallbackContext) -> None:
@@ -59,6 +103,9 @@ async def button(update: Update, context: CallbackContext) -> None:
 
 def main() -> None:
     """Start the bot."""
+    # Clean up downloads directory on startup
+    cleanup_downloads()
+    
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(os.getenv("TOKEN")).build()
 

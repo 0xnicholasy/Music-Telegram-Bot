@@ -1,7 +1,7 @@
 import os
 import time
 from typing import Tuple
-import yt_dlp as youtube_dl
+from pytubefix import YouTube, Playlist
 from telegram import Update
 from telegram.ext import CallbackContext, ContextTypes
 
@@ -9,24 +9,54 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 def download_audio(url: str, is_playlist: bool) -> Tuple[str, str]:
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": "downloads/%(playlist_title)s/%(title)s.%(ext)s",
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            }
-        ],
-        "ignoreerrors": True,  # Ignore errors
-    }
-
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        info_dict = ydl.extract_info(url, download=True)
+    try:
         if is_playlist:
-            return "downloads/" + info_dict["title"] + "/", info_dict["title"]
-        return "downloads/NA/", info_dict["title"]
+            # Handle playlist
+            playlist = Playlist(url)
+            playlist_title = playlist.title or "Unknown_Playlist"
+            # Clean the title for use as folder name
+            playlist_title = "".join(c for c in playlist_title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            
+            download_path = f"downloads/{playlist_title}/"
+            os.makedirs(download_path, exist_ok=True)
+            
+            for video in playlist.videos:
+                try:
+                    # Get the best audio stream
+                    audio_stream = video.streams.filter(only_audio=True).order_by('abr').desc().first()
+                    if audio_stream:
+                        # Clean the title for filename
+                        safe_title = "".join(c for c in video.title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                        filename = f"{safe_title}.{audio_stream.subtype}"
+                        audio_stream.download(output_path=download_path, filename=filename)
+                except Exception as e:
+                    print(f"Error downloading video {video.watch_url}: {e}")
+                    continue
+            
+            return download_path, playlist_title
+        else:
+            # Handle single video with OAuth for better reliability
+            yt = YouTube(
+                url,
+                use_oauth=True,
+                allow_oauth_cache=True
+            )
+            download_path = "downloads/NA/"
+            os.makedirs(download_path, exist_ok=True)
+            
+            # Get the best audio stream
+            audio_stream = yt.streams.filter(only_audio=True).order_by('abr').desc().first()
+            if audio_stream:
+                # Clean the title for filename
+                safe_title = "".join(c for c in yt.title if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                filename = f"{safe_title}.{audio_stream.subtype}"
+                audio_stream.download(output_path=download_path, filename=filename)
+            
+            return download_path, yt.title
+            
+    except Exception as e:
+        print(f"Error in download_audio: {e}")
+        raise e
 
 
 async def send_all_audio(
@@ -35,11 +65,15 @@ async def send_all_audio(
     for i in range(100):
         for dirpath, dirnames, filenames in os.walk(file_path):
             for filename in filenames:
-                filename: str = filename.replace("webm", "mp3")
-                # print(f'filename: {filename}')
+                # Handle different audio formats that pytube might download
                 if filename.endswith(".part"):
                     continue  # skip files failed to download
-                full_file_path = file_path + filename
+                
+                # Check if it's an audio file
+                if not any(filename.lower().endswith(ext) for ext in ['.mp3', '.mp4', '.webm', '.m4a', '.aac']):
+                    continue
+                    
+                full_file_path = os.path.join(file_path, filename)
                 try:
                     print("sending audio: ", filename)
                     with open(full_file_path, "rb") as audio_file:
@@ -102,20 +136,20 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def test_single_song():
     url = "https://youtu.be/5RaU8K8sLTM?si=r0eajzNcZyDZSY4V"
-    print(download_audio((url)))
+    print(download_audio(url, False))
 
 
 def test_playlist():
     url = "https://www.youtube.com/playlist?list=PLVqJ1WxX9VeDV98868qcdZSISwDV468Pc"
-    print(download_audio((url)))
+    print(download_audio(url, True))
 
 
 def test_error_playlist():
     url = "https://youtube.com/playlist?list=PLVqJ1WxX9VeCu54yyAH83MYdW30nl7Fkv&si=eVA156cU2l2adPi9"
-    print(download_audio((url)))
+    print(download_audio(url, True))
 
 
 if __name__ == "__main__":
-    # test_single_song()
-    # test_playlist()
-    test_error_playlist()
+    test_single_song()
+    test_playlist()
+    # test_error_playlist()
